@@ -14,11 +14,14 @@
     pipenv run python retrover.py COM11 COM7
     pipenv run python retrover.py /dev/ttyUSB0
 
+  Use -h or --help for more description of command-line arguments.
+
   Press Ctrl+C once to see a summary of what's been seen so far, and again to quit.
 
   Also set the options below - directly in this script; seems simpler for occasional use.
 """
 
+import argparse
 import os
 import re
 import sys
@@ -106,18 +109,9 @@ def maybeOutput():
         waitingForLogLines -= 1
         writeToFile(log.popleft())
 
-logFile = open('retrover.log', mode='a', buffering=1)
-
 def writeToFile(logEntry):
     global logFile
     print(logEntry[0], logEntry[1], file=logFile)
-
-print('', file=logFile)
-writeToFile([_now(), 'Start run.'])
-writeToFile([_now(), "Searching for: " + str(EVENT_PATTERN)]);
-
-if USE_REGEX:
-  regex = re.compile(EVENT_PATTERN[0])
 
 def isEvent(line: str):
     # Return true iff line triggers an event.
@@ -183,15 +177,31 @@ def processPort(i):
 
     return line
 
+
+# Parse command-line arguments.
+parser = argparse.ArgumentParser(description='Watch serial ports for events, and log them.')
+parser.add_argument('serialPorts', metavar='PORT', nargs='+',
+                    help='a serial port to watch')
+parser.add_argument('--log', dest='logFileName', nargs='?', default='retrover.log',
+                    help='file to log events to')
+
+args = parser.parse_args()
+
 # Serial port setup
-if len(sys.argv) < 2:
-    print("Specify the path to the serial ports on the command line, like 'COM1' or '/dev/ttyUSB0'.")
-    sys.exit()
-for serialI in range(1, len(sys.argv)):
-    nextPort = sys.argv[serialI]
+for nextPort in args.serialPorts:
     print("Connecting to serial port '{}'.".format(nextPort))
     serialPortNames.append(nextPort)
     serialPorts.append(serial.Serial(nextPort, COM_PORT_BAUD_RATE, timeout=0.1))
+
+if USE_REGEX:
+  regex = re.compile(EVENT_PATTERN[0])
+
+# Open the log file.
+logFile = open(args.logFileName, mode='a', buffering=1)
+
+print('', file=logFile)
+writeToFile([_now(), 'Start run.'])
+writeToFile([_now(), "Searching for: " + str(EVENT_PATTERN)]);
 
 print("Searching for:", EVENT_PATTERN);
 print("Press Ctrl+C to see stats.\n----")
