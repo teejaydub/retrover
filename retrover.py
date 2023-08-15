@@ -41,7 +41,7 @@ COM_PORT_BAUD_RATE = 9600
 
 # A single regex pattern to match, or a list of strings to match.
 # Sought anywhere in the line, across all ports.
-EVENT_PATTERN = ['\~S=[^4]', '!!!!', '??']
+EVENT_PATTERN = ['(\~S=[^4])|(.*!!!!)|(.*\?\?)']
 
 # Whether we're using regex matching or simple string matching.
 USE_REGEX = True
@@ -201,9 +201,11 @@ logFile = open(args.logFileName, mode='a', buffering=1)
 
 print('', file=logFile)
 writeToFile([_now(), 'Start run.'])
-writeToFile([_now(), "Searching for: " + str(EVENT_PATTERN)]);
 
-print("Searching for:", EVENT_PATTERN);
+summary = "Searching for: " + str(EVENT_PATTERN) + (" as regex" if USE_REGEX else "")
+writeToFile([_now(), summary])
+
+print(summary);
 print("Press Ctrl+C to see stats.\n----")
 
 start_time = _now()
