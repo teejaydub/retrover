@@ -91,10 +91,12 @@ def headerForPort(i):
 
 log = deque([])
 waitingForLogLines = 0;
-def logLine(line):
+def logLine(line, timestamp=True):
+    ''' Add this line to a managed log, that will be dumped to a file only around events.
+      If timestamp is False, omit the usual prefix of the date and time.
+    '''
     global args
-    # Add this line to a managed log, that will be dumped to a file only around events.
-    log.append([_now(), line])
+    log.append([_now() if timestamp else "", line])
     print(numEvents, line)
     maybeOutput();
     while len(log) > args.windowRadius:
@@ -109,7 +111,12 @@ def maybeOutput():
 
 def writeToFile(logEntry):
     global logFile
-    print(logEntry[0], logEntry[1], file=logFile)
+    line = str(logEntry[0])
+    if line:
+      line += ' ' + logEntry[1]
+    else:
+      line = logEntry[1]
+    print(line, file=logFile)
 
 def isEvent(line: str):
     # Return true iff line triggers an event.
@@ -138,6 +145,10 @@ def logEvent():
 
     isInRun = EVENT_MODE == EVENT_RUN and waitingForLogLines > 0
 
+    # Output an event separator if we're not currently showing an event.
+    if not isInRun:
+      writeToFile(["", ""])
+
     # Output up to args.windowRadius lines that we already have.
     waitingForLogLines = args.windowRadius
     maybeOutput()
@@ -145,7 +156,7 @@ def logEvent():
     # Output some stuff about the event.
     if not isInRun:
       numEvents += 1
-      logLine("\n\n== EVENT FOUND ==\n")
+      logLine("==\n== EVENT FOUND ==\n==", timestamp=False)
     printStats()
     
     # Note that we want to output another half-window of lines afterwards.
