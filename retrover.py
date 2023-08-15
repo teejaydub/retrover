@@ -49,13 +49,10 @@ USE_REGEX = True
 # If not using regex, whether matching should be case-sensitive.
 CASE_SENSITIVE = False
 
-# Print this many lines before and after the event to the log.
-WINDOW_RADIUS = 50
-
 # Different ways we can trigger an event:
 MATCH_EVENT = 1  # Simply if the EVENT_PATTERN is found in a line.
 DELTA_EVENT = 2  # If the pattern is found, AND the line differs from the previously-found match.
-EVENT_RUN = 3    # If the pattern is found, AND there has not been a match in the previous WINDOW_RADIUS lines.
+EVENT_RUN = 3    # If the pattern is found, AND there has not been a match in the previous args.windowRadius lines.
 
 EVENT_MODE = EVENT_RUN
 
@@ -95,11 +92,12 @@ def headerForPort(i):
 log = deque([])
 waitingForLogLines = 0;
 def logLine(line):
+    global args
     # Add this line to a managed log, that will be dumped to a file only around events.
     log.append([_now(), line])
     print(numEvents, line)
     maybeOutput();
-    while len(log) > WINDOW_RADIUS:
+    while len(log) > args.windowRadius:
         log.popleft()
 
 def maybeOutput():
@@ -136,12 +134,12 @@ def isEvent(line: str):
     return False
 
 def logEvent():
-    global waitingForLogLines, numEvents
+    global args, waitingForLogLines, numEvents
 
     isInRun = EVENT_MODE == EVENT_RUN and waitingForLogLines > 0
 
-    # Output up to WINDOW_RADIUS lines that we already have.
-    waitingForLogLines = WINDOW_RADIUS
+    # Output up to args.windowRadius lines that we already have.
+    waitingForLogLines = args.windowRadius
     maybeOutput()
 
     # Output some stuff about the event.
@@ -151,7 +149,7 @@ def logEvent():
     printStats()
     
     # Note that we want to output another half-window of lines afterwards.
-    waitingForLogLines = WINDOW_RADIUS
+    waitingForLogLines = args.windowRadius
 
 def processPort(i):
     # Read and echo a line from the given port.
@@ -184,6 +182,8 @@ parser.add_argument('serialPorts', metavar='PORT', nargs='+',
                     help='a serial port to watch')
 parser.add_argument('--log', dest='logFileName', nargs='?', default='retrover.log',
                     help='file to log events to')
+parser.add_argument('--radius', dest='windowRadius', nargs='?', default=10,
+                    help='log this many lines before and after the event.')
 
 args = parser.parse_args()
 
