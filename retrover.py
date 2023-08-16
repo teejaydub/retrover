@@ -130,7 +130,7 @@ def logEvent():
     # Output some stuff about the event.
     if not isInRun:
       numEvents += 1
-      logLine("==\n== EVENT FOUND ==\n==", timestamp=False)
+      logLine(f"==\n== EVENT FOUND (#{numEvents}) ==\n==", timestamp=False)
     printStats()
     
     # Note that we want to output another half-window of lines afterwards.
