@@ -32,21 +32,18 @@ from datetime import datetime
 
 import serial
 
-# Configuration
-# More of these could come from command-line arguments.
-# I'm only using this for one thing at the moment, and I want to document the settings I used.
 
 # Different ways we can trigger an event:
-MATCH_EVENT = 1  # Simply if a regex is found in a line.
-DELTA_EVENT = 2  # If a regex is found, AND the line differs from the previously-found match.
-EVENT_RUN = 3    # If a regex is found, AND there has not been a match in the previous args.windowRadius lines.
+EVENT_MATCH = 'match'  # Simply if a regex is found in a line.
+EVENT_DELTA = 'delta'  # If a regex is found, AND the line differs from the previously-found match.
+EVENT_RUN = 'run'    # If a regex is found, AND there has not been a match in the previous args.windowRadius lines.
 
-EVENT_MODE = EVENT_RUN
 
 serialPortNames = []
 serialPorts = []
 numEvents = 0
 previousMatchLine = ''
+
 
 def _now():
     global args
@@ -105,13 +102,13 @@ def writeToFile(logEntry):
 
 def isEvent(line: str):
     # Return true iff line triggers an event.
-    global regexes, previousMatchLine
+    global args, regexes, previousMatchLine
 
     # See if we have a match.
     if any([regex.search(line) for regex in regexes]):
-        if EVENT_MODE == MATCH_EVENT or EVENT_MODE == EVENT_RUN:
+        if args.mode == EVENT_MATCH or args.mode == EVENT_RUN:
             return True
-        elif EVENT_MODE == DELTA_EVENT:
+        elif args.mode == EVENT_DELTA:
             if line != previousMatchLine:
                 previousMatchLine = line
                 return True
@@ -120,7 +117,7 @@ def isEvent(line: str):
 def logEvent():
     global args, waitingForLogLines, numEvents
 
-    isInRun = EVENT_MODE == EVENT_RUN and waitingForLogLines > 0
+    isInRun = args.mode == EVENT_RUN and waitingForLogLines > 0
 
     # Output an event separator if we're not currently showing an event.
     if not isInRun:
@@ -174,7 +171,15 @@ parser.add_argument('--log', dest='logFileName', nargs='?', default='retrover.lo
                     help='file to log events to')
 parser.add_argument('--window', dest='windowRadius', default=10,
                     help='Log this many lines before and after the event.')
-parser.add_argument('--regex', nargs='+', required=True,
+
+parser.add_argument('--eventrun', dest='mode', action='store_const', const=EVENT_RUN, default=EVENT_RUN,
+                    help="An event is counted for each run of lines that has any match.")
+parser.add_argument('--delta', dest='mode', action='store_const', const=EVENT_DELTA,
+                    help="An event is counted for each match that's different from the previous line.")
+parser.add_argument('--single', dest='mode', action='store_const', const=EVENT_MATCH,
+                    help='An event is counted for each match.')
+
+parser.add_argument('--regex', nargs='+', required=True, action='extend',
                     help='A line that matches one or more regexes, anywhere, is an event.')
 
 parser.add_argument('--ignorecase', action='store_true',
@@ -198,7 +203,7 @@ logFile = open(args.logFileName, mode='a', buffering=1)
 print('', file=logFile)
 writeToFile([_now(), 'Start run.'])
 
-summary = "Searching for regexes: " + str(args.regex)
+summary = "Searching for regexes: " + str(args.regex) + ", counting by " + args.mode
 writeToFile([_now(), summary])
 print(summary);
 print("Press Ctrl+C to see stats.\n----")
