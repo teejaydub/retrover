@@ -43,19 +43,17 @@ EVENT_RUN = 3    # If a regex is found, AND there has not been a match in the pr
 
 EVENT_MODE = EVENT_RUN
 
-# Whether to log times in UTC or local.
-USE_UTC = False
-
 serialPortNames = []
 serialPorts = []
 numEvents = 0
 previousMatchLine = ''
 
 def _now():
-  if USE_UTC:
-    return datetime.utcnow()
-  else:
-    return datetime.now()
+    global args
+    if args.utc:
+        return datetime.utcnow()
+    else:
+        return datetime.now()
 
 def printStats():
     global numEvents
@@ -174,13 +172,15 @@ parser.add_argument('--baud', nargs='?', default=9600,
                     help='baud rate for all serial ports')
 parser.add_argument('--log', dest='logFileName', nargs='?', default='retrover.log',
                     help='file to log events to')
-parser.add_argument('--window', dest='windowRadius', nargs='?', default=10,
+parser.add_argument('--window', dest='windowRadius', default=10,
                     help='Log this many lines before and after the event.')
-
 parser.add_argument('--regex', nargs='+', required=True,
                     help='A line that matches one or more regexes, anywhere, is an event.')
+
 parser.add_argument('--ignorecase', action='store_true',
                     help='whether to distinguish upper and lower case letters or not')
+parser.add_argument('--utc', action='store_true',
+                    help='whether to log times in UTC, vs. local time')
 
 args = parser.parse_args()
 
