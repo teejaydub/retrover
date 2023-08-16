@@ -92,13 +92,13 @@ def maybeOutput():
         writeToFile(log.popleft())
 
 def writeToFile(logEntry):
-    global logFile
+    global args
     line = str(logEntry[0])
     if line:
       line += ' ' + logEntry[1]
     else:
       line = logEntry[1]
-    print(line, file=logFile)
+    print(line, file=args.logFile)
 
 def isEvent(line: str):
     # Return true iff line triggers an event.
@@ -167,7 +167,8 @@ parser.add_argument('serialPorts', metavar='PORT', nargs='+',
                     help='a serial port to watch')
 parser.add_argument('--baud', nargs='?', default=9600,
                     help='baud rate for all serial ports')
-parser.add_argument('--log', dest='logFileName', nargs='?', default='retrover.log',
+parser.add_argument('--log', dest='logFile', default='retrover.log',
+                    type=argparse.FileType('a', bufsize=1),
                     help='file to log events to')
 parser.add_argument('--window', dest='windowRadius', default=10,
                     help='Log this many lines before and after the event.')
@@ -197,10 +198,7 @@ for nextPort in args.serialPorts:
 
 regexes = [re.compile(r, re.IGNORECASE if args.ignorecase else 0) for r in args.regex]
 
-# Open the log file.
-logFile = open(args.logFileName, mode='a', buffering=1)
-
-print('', file=logFile)
+print('', file=args.logFile)
 writeToFile([_now(), 'Start run.'])
 
 summary = "Searching for regexes: " + str(args.regex) + ", counting by " + args.mode
