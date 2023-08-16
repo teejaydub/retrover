@@ -36,23 +36,10 @@ import serial
 # More of these could come from command-line arguments.
 # I'm only using this for one thing at the moment, and I want to document the settings I used.
 
-# The serial baud rate, shared across all ports.
-COM_PORT_BAUD_RATE = 9600
-
-# A single regex pattern to match, or a list of strings to match.
-# Sought anywhere in the line, across all ports.
-EVENT_PATTERN = ['(\~S=[^4])|(.*!!!!)|(.*\?\?)']
-
-# Whether we're using regex matching or simple string matching.
-USE_REGEX = True
-
-# If not using regex, whether matching should be case-sensitive.
-CASE_SENSITIVE = False
-
 # Different ways we can trigger an event:
-MATCH_EVENT = 1  # Simply if the EVENT_PATTERN is found in a line.
-DELTA_EVENT = 2  # If the pattern is found, AND the line differs from the previously-found match.
-EVENT_RUN = 3    # If the pattern is found, AND there has not been a match in the previous args.windowRadius lines.
+MATCH_EVENT = 1  # Simply if a regex is found in a line.
+DELTA_EVENT = 2  # If a regex is found, AND the line differs from the previously-found match.
+EVENT_RUN = 3    # If a regex is found, AND there has not been a match in the previous args.windowRadius lines.
 
 EVENT_MODE = EVENT_RUN
 
@@ -120,18 +107,10 @@ def writeToFile(logEntry):
 
 def isEvent(line: str):
     # Return true iff line triggers an event.
-    global previousMatchLine
+    global regexes, previousMatchLine
 
     # See if we have a match.
-    if USE_REGEX:
-      global regex
-      result = regex.match(line)
-    elif CASE_SENSITIVE:
-      result = any([e in line for e in EVENT_PATTERN])
-    else:
-      result = any([e.lower() in line.lower() for e in EVENT_PATTERN])
-
-    if result:
+    if any([regex.search(line) for regex in regexes]):
         if EVENT_MODE == MATCH_EVENT or EVENT_MODE == EVENT_RUN:
             return True
         elif EVENT_MODE == DELTA_EVENT:
@@ -191,10 +170,17 @@ def processPort(i):
 parser = argparse.ArgumentParser(description='Watch serial ports for events, and log them.')
 parser.add_argument('serialPorts', metavar='PORT', nargs='+',
                     help='a serial port to watch')
+parser.add_argument('--baud', nargs='?', default=9600,
+                    help='baud rate for all serial ports')
 parser.add_argument('--log', dest='logFileName', nargs='?', default='retrover.log',
                     help='file to log events to')
-parser.add_argument('--radius', dest='windowRadius', nargs='?', default=10,
-                    help='log this many lines before and after the event.')
+parser.add_argument('--window', dest='windowRadius', nargs='?', default=10,
+                    help='Log this many lines before and after the event.')
+
+parser.add_argument('--regex', nargs='+', required=True,
+                    help='A line that matches one or more regexes, anywhere, is an event.')
+parser.add_argument('--ignorecase', action='store_true',
+                    help='whether to distinguish upper and lower case letters or not')
 
 args = parser.parse_args()
 
@@ -202,10 +188,9 @@ args = parser.parse_args()
 for nextPort in args.serialPorts:
     print("Connecting to serial port '{}'.".format(nextPort))
     serialPortNames.append(nextPort)
-    serialPorts.append(serial.Serial(nextPort, COM_PORT_BAUD_RATE, timeout=0.1))
+    serialPorts.append(serial.Serial(nextPort, args.baud, timeout=0.1))
 
-if USE_REGEX:
-  regex = re.compile(EVENT_PATTERN[0])
+regexes = [re.compile(r, re.IGNORECASE if args.ignorecase else 0) for r in args.regex]
 
 # Open the log file.
 logFile = open(args.logFileName, mode='a', buffering=1)
@@ -213,9 +198,8 @@ logFile = open(args.logFileName, mode='a', buffering=1)
 print('', file=logFile)
 writeToFile([_now(), 'Start run.'])
 
-summary = "Searching for: " + str(EVENT_PATTERN) + (" as regex" if USE_REGEX else "")
+summary = "Searching for regexes: " + str(args.regex)
 writeToFile([_now(), summary])
-
 print(summary);
 print("Press Ctrl+C to see stats.\n----")
 
