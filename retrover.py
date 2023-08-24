@@ -66,8 +66,8 @@ def headerForPort(i):
     # Return the string to print at the start of each line to indicate what port it's from.
     if len(serialPorts) == 1:
         return ""
-    elif len(serialPorts) == 2:
-        return ["< ", " >"][i]
+    elif len(serialPorts) <= 3:
+        return ["< ", " >", "  "][i]
     else:
         return ""
 
