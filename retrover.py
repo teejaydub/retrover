@@ -103,13 +103,13 @@ def maybeOutput():
         writeToFile(log.popleft())
 
 def writeToFile(logEntry):
-    global args
+    global args, logFile
     line = str(logEntry[0])
     if line:
       line += ' ' + logEntry[1]
     else:
       line = logEntry[1]
-    print(line, file=args.logFile)
+    print(line, file=logFile)
 
 def isEvent(line: str):
     ''' Return true iff line triggers an event.
@@ -189,9 +189,10 @@ parser.add_argument('serialPorts', metavar='PORT', nargs='+',
                     help='a serial port to watch')
 parser.add_argument('--baud', nargs='?', default=9600, type=int,
                     help='baud rate for all serial ports')
-parser.add_argument('--log', dest='logFile', default='retrover.log',
-                    type=argparse.FileType('a', bufsize=1),
+parser.add_argument('--log', dest='logFileName', default='retrover.log',
                     help='file to log events to')
+parser.add_argument('--clear', dest='clearLog', action='store_true',
+                    help='whether to clear the log file at startup or append to existing content')
 parser.add_argument('--window', dest='windowRadius', default=10, type=int,
                     help='Log this many lines before and after the event.')
 parser.add_argument('--windowSecs', dest='windowSecs', default=16, type=int,
@@ -227,38 +228,39 @@ for nextPort in args.serialPorts:
 # Other set up and banner.
 regexes = [re.compile(r, re.IGNORECASE if args.ignorecase else 0) for r in args.regex]
 
-print('', file=args.logFile)
-writeToFile([_now(), 'Start run.'])
+with open(args.logFileName, ('w' if args.clearLog else 'a'), buffering=1) as logFile:
+    print('', file=logFile)
+    writeToFile([_now(), 'Start run.'])
 
-summary = "Searching for regexes: " + str(args.regex) + ", counting by " + args.mode
-if args.mode == EVENT_NOPULSE:
-    summary += ' in ' + str(args.windowSecs) + ' sec'
-summary += ' with window radius ' + str(args.windowRadius)
+    summary = "Searching for regexes: " + str(args.regex) + ", counting by " + args.mode
+    if args.mode == EVENT_NOPULSE:
+        summary += ' in ' + str(args.windowSecs) + ' sec'
+    summary += ' with window radius ' + str(args.windowRadius)
 
-writeToFile([_now(), summary])
-print(summary);
-print("Press Ctrl+C to see stats.\n----")
+    writeToFile([_now(), summary])
+    print(summary);
+    print("Press Ctrl+C to see stats.\n----")
 
-start_time = _now()
-last_match_time = _now()
-saw_pulse = False  # on the current line.
-
-
-# Read loop
-try:
-    while True:
-        try:
-            for port in range(len(serialPorts)):
-                while processPort(port):
-                    pass
-
-        except KeyboardInterrupt:
-            printStats()
-            print("Press Ctrl+C again to quit.")
-            time.sleep(3)
-except KeyboardInterrupt:
-    pass
+    start_time = _now()
+    last_match_time = _now()
+    saw_pulse = False  # on the current line.
 
 
-# Cleanup.
-writeToFile([_now(), 'Closing.'])
+    # Read loop
+    try:
+        while True:
+            try:
+                for port in range(len(serialPorts)):
+                    while processPort(port):
+                        pass
+
+            except KeyboardInterrupt:
+                printStats()
+                print("Press Ctrl+C again to quit.")
+                time.sleep(3)
+    except KeyboardInterrupt:
+        pass
+
+
+    # Cleanup.
+    writeToFile([_now(), 'Closing.'])
