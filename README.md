@@ -4,6 +4,10 @@ A serial port monitor that makes it easy to see rare events and their context.
 Watches multiple serial ports for rare events among line-oriented protocols.
 Omits and/or compresses traffic that's not around those events.
 
+## Setup
+
+If you have pip installed, `make` will do all necessary setup, and will show the help documentation.
+
 ## Usage
 
 Pass serial port names as parameters:
